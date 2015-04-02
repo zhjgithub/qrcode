@@ -31,7 +31,6 @@
  
       var imageData = cameraManager.getImageData();
       var detectedQRCode = qrCodeManager.detectQRCode(imageData, function(url) {
-        console.log(url)
         if(url !== undefined) {
           qrCodeManager.showDialog(url);
         }
@@ -49,23 +48,32 @@
 
     var client = new QRClient();
 
+    var imageDecoderWorker = new Worker('scripts/jsqrcode/qrworker.js');
+
     var self = this;
 
     this.currentUrl = undefined;
 
-    var imageWorker = new Worker('scripts/jsqrcode/qrworker.js');
-
     this.detectQRCode = function(imageData, callback) {
       callback = callback || function() {};
 
-      imageWorker.postMessage(imageData);
+      imageDecoderWorker.postMessage(imageData);
 
-      imageWorker.onmessage = function(result) {
+      imageDecoderWorker.onmessage = function(result) {
         var url = result.data;
         if(url !== undefined) {
           self.currentUrl = url;
         }
         callback(url);
+      };
+
+      imageDecoderWorker.onerror = function(error) {
+        function WorkerException(message) {
+          this.name = "WorkerException";
+          this.message = message;
+        };
+        throw new WorkerException('Decoder error');
+        callback(undefined);
       };
     };
 
